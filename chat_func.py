@@ -60,7 +60,10 @@ def main():
     room = input("> ")
 
     # Use the room to set MQTT topic
-    topic = CHAT_ROOMS[room]
+    if username == 'moderator':
+        topic = 'chat/#'
+    else:
+        topic = CHAT_ROOMS[room]
 
     # Connect client
     client = connect_mqtt(username)
@@ -94,7 +97,8 @@ def main():
     client.loop_start()
 
     # Publish a message to the chat room that the user has joined
-    client.publish(topic, f"{username} has joined the chat")
+    if username != 'moderator':
+        client.publish(topic, f"{username} has joined the chat")
     while True:
         try:
             # Check if there is an input from the user
@@ -105,14 +109,19 @@ def main():
             # Check if the user wants to exit the application
             if msg_to_send.lower() == "quit":
                 # Publish a message that this user leaves the chat
-                client.publish(topic, f"{username} has left the chat")
+                if username != 'moderator':
+                    client.publish(topic, f"{username} has left the chat")
                 # Indicate to the input thread that it can exit
                 running = False
                 break
             # Attaching the username to the message
             msg_to_send = f"{username}> {msg_to_send}"
             # and publish it
-            client.publish(topic, msg_to_send)
+            if username == 'moderator':
+                for chat_topic in CHAT_ROOMS.values():
+                    client.publish(chat_topic, msg_to_send)
+            else:
+                client.publish(topic, msg_to_send)
         except queue.Empty:  # We will end up here if there was no user input
             pass  # No user input, do nothing
 
